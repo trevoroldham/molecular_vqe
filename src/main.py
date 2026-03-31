@@ -1,41 +1,74 @@
+import argparse
 import time
-import numpy as np
-from classical_baseline import calculate_classical_energy
+from molecule_builder import Atom, MoleculeFactory
 from quantum_solver import run_quantum_vqe
+from classical_baseline import calculate_classical_energy
+import warnings
+from scipy.sparse import SparseEfficiencyWarning
+
+# Suppress SciPy warnings from Qiskit's internal mappers
+warnings.filterwarnings("ignore", category=SparseEfficiencyWarning)
+
+MOLECULE_LIBRARY = {
+    "h2": [
+        Atom("H", 0.0, 0.0, 0.0), 
+        Atom("H", 0.0, 0.0, 0.735)
+    ],
+    "water": [
+        Atom("O", 0.0, 0.0, 0.0), 
+        Atom("H", 0.757, 0.586, 0.0), 
+        Atom("H", -0.757, 0.586, 0.0)
+    ],
+    "lih": [
+        Atom("Li", 0.0, 0.0, 0.0), 
+        Atom("H", 0.0, 0.0, 1.546)
+    ]
+}
 
 def main():
-    dist = 0.735
-    print(f"--- Molecular Analysis for H2 (Bond Distance: {dist} A) ---")
+    parser = argparse.ArgumentParser(description="VQE Molecular Solver")
+    parser.add_argument("-m", "--molecule", type=str, choices=MOLECULE_LIBRARY.keys(), default="h2")
+    parser.add_argument("-e", "--electrons", type=int, default=None)
+    parser.add_argument("-o", "--orbitals", type=int, default=None)
+    args = parser.parse_args()
+
+    print(f"\n--- Initializing {args.molecule.upper()} ---")
+    atoms = MOLECULE_LIBRARY[args.molecule]
+    factory = MoleculeFactory(atoms=atoms)
+
+    if args.electrons and args.orbitals:
+        print(f"Applying Active Space: {args.electrons} electrons, {args.orbitals} orbitals (Core frozen).")
     
-    # 1. Run Classical
+    problem = factory.build_problem(active_electrons=args.electrons, active_orbitals=args.orbitals)
+
+    # --- Run Classical Baseline ---
     start_c = time.time()
-    c_result = calculate_classical_energy(dist)
-    # Explicitly extract the first element as a float
-    c_energy = float(c_result.total_energies[0])
+    c_energy = calculate_classical_energy(problem)
     c_time = time.time() - start_c
-    
-    # 2. Run Quantum
+
+    # --- Run Quantum VQE ---
     start_q = time.time()
-    # run_quantum_vqe already returns a float (.real)
-    q_energy = float(run_quantum_vqe(dist))
+    q_energy = run_quantum_vqe(problem)
     q_time = time.time() - start_q
-    
-    # 3. Calculate Error (Now handles two floats, so 'error' is a float)
+
+    # --- Calculate Error ---
     error = abs(c_energy - q_energy)
+
+    # --- Output Report ---
+    print("\n" + "="*50)
+    print(f"{'Method':<20} | {'Energy (Hartree)':<18} | {'Time (s)':<8}")
+    print("-" * 50)
+    print(f"{'Classical Exact':<20} | {c_energy:<18.6f} | {c_time:<8.2f}")
+    print(f"{'Quantum HEA (VQE)':<20} | {q_energy:<18.6f} | {q_time:<8.2f}")
+    print("="*50)
+    print(f"Absolute Error: {error:.6f} Hartree")
     
-    print("\n" + "="*40)
-    print(f"{'Method':<15} | {'Energy (Hartree)':<18} | {'Time (s)':<8}")
-    print("-" * 40)
-    print(f"{'Classical':<15} | {c_energy:<18.8f} | {c_time:<8.4f}")
-    print(f"{'Quantum (VQE)':<15} | {q_energy:<18.8f} | {q_time:<8.4f}")
-    print("="*40)
-    print(f"Absolute Error: {error:.8e} Hartree")
-    
-    # Chemical Accuracy check (approx 1.6 mHartree)
     if error < 1.6e-3:
-        print("RESULT: Within Chemical Accuracy (1.6 mHartree). Success!")
+        print("RESULT: Within Chemical Accuracy (1.6 mHa). Success!")
     else:
-        print("RESULT: Outside Chemical Accuracy. Optimization tuning required.")
+        print("RESULT: Outside Chemical Accuracy. This is expected with shallow HEA circuits.")
+        print("        Increase 'reps' in the ansatz to improve accuracy.")
+    print("\n")
 
 if __name__ == "__main__":
     main()
