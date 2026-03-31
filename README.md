@@ -25,3 +25,9 @@ The solver is driven by a command-line interface that allows for dynamic molecul
 Runs a full quantum simulation of $H_2$ at equilibrium bond length ($0.735$ Å).
 ```bash
 python3 src/main.py --molecule h2
+```
+
+**2. Scaled Simulation with Active Space (Water)**
+```bash
+python3 src/main.py --molecule water --electrons 8 --orbitals 6
+```
