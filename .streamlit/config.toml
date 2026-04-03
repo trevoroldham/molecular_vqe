@@ -1,0 +1,19 @@
+[theme]
+# Base configuration
+base="dark"
+
+# The primary accent color for interactive elements (buttons, sliders, toggles)
+# Using a vibrant neon purple/magenta here for a "fun/chill" aesthetic
+primaryColor="#B14AFF"
+
+# The main background color (Deep, rich dark grey/black)
+backgroundColor="#0E1117"
+
+# The secondary background color for the sidebar and input boxes
+secondaryBackgroundColor="#1A1D24"
+
+# Clean, bright text for high contrast
+textColor="#FAFAFA"
+
+# Clean, modern font
+font="sans serif"

@@ -33,7 +33,7 @@ Simulates $H_2O$ locally. To prevent an exponential explosion in Hilbert space, 
 ```bash
 python3 src/main.py --molecule water --electrons 8 --orbitals 6
 ```
-**Physical Hardware Execution (IBM Quantum)
+**3. Physical Hardware Execution (IBM Quantum)**
 Routes the VQE algorithm to a phyysical superconducting quantum processor. Requires an active IMB Quantum API token saved locally.
 ```bash
 python3 src/main.py --molecule h2 --backend ibm_brisbane
