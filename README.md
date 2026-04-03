@@ -17,6 +17,7 @@ This project maps fermionic operators to a qubit Hamiltonian and optimizes the g
 - **Languages:** Python 3.12
 - **Quantum Framework:** Qiskit 1.0+, Qiskit-Algorithms, Qiskit-Nature, Qiskit-IBM-Runtime
 - **Scientific Computing:** PySCF, SciPy, NumPy
+- **Web Interface & 3D Rendering:** Streamlit, py3Dmol, stmol
 
 ## 🚀 Usage
 
