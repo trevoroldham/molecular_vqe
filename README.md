@@ -28,6 +28,7 @@ python3 src/main.py --molecule h2
 ```
 
 **2. Scaled Simulation with Active Space (Water)**
+Simulates $H_2O$. To prevent an exponential explosion in Hilbert space, we freeze the Oxygen core electrons and isolate the active space to the 8 valence electrons across 6 spatial orbitals.
 ```bash
 python3 src/main.py --molecule water --electrons 8 --orbitals 6
 ```
