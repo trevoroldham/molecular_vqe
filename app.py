@@ -81,9 +81,11 @@ if use_active_space:
     active_electrons = st.sidebar.number_input("Active Electrons", min_value=1, value=8)
     active_orbitals = st.sidebar.number_input("Active Orbitals", min_value=1, value=6)
 
-backend_choice = st.sidebar.radio(
-    "Execution Backend",
-    options=["local", "ibm_brisbane"]
+st.sidebar.markdown("---")
+st.sidebar.info(
+    "🔒 **Public Demo Mode**\n\n"
+    "Hardware execution is disabled for this public deployment. "
+    "The quantum solver is currently locked to the local noiseless statevector simulator."
 )
 
 # --- 3. Parsing and Dynamic Rendering ---
@@ -125,7 +127,8 @@ if st.button("Initialize Quantum Solver", type="primary"):
     if not selected_atoms:
         st.error("No valid atoms found in the XYZ input. Please check your formatting.")
     else:
-        with st.spinner(f"Executing VQE on {backend_choice}..."):
+        # 1. Update the spinner text
+        with st.spinner("Executing VQE on Local Simulator..."):
             try:
                 # 1. Build the Problem
                 factory = MoleculeFactory(atoms=selected_atoms)
@@ -143,10 +146,12 @@ if st.button("Initialize Quantum Solver", type="primary"):
                 start_time_q = time.time()
                 q_energy = run_quantum_vqe(
                     problem=problem, 
-                    backend_name=backend_choice,
+                    backend_name="local", # 2. Hardcoded securely to 'local'
                     use_session=False 
                 )
                 q_time = time.time() - start_time_q
+                
+                # ... (The rest of your display logic remains exactly the same)
 
                 # 4. Calculate Error
                 error = abs(c_energy - q_energy)
