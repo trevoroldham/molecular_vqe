@@ -2,6 +2,7 @@ streamlit
 qiskit
 qiskit-algorithms
 qiskit-nature
+qiskit-ibm-runtime
 pyscf
 stmol
 py3Dmol
