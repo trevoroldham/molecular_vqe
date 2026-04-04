@@ -5,3 +5,4 @@ __pycache__/
 *.png
 *.streamlit/
 *.egg-info
+.vscode/settings.json
