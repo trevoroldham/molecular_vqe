@@ -2,6 +2,8 @@ import streamlit as st
 import py3Dmol
 from stmol import showmol
 import time
+import io
+from contextlib import redirect_stdout
 
 # Import your existing backend
 from src.molecule_builder import Atom, MoleculeFactory
@@ -39,7 +41,7 @@ def parse_xyz_string(xyz_str):
                 continue 
     return atoms
 
-# --- 1. Page Configuration ---
+
 # --- 1. Page Configuration ---
 # Set the favicon to something thematic, and keep the layout wide
 st.set_page_config(page_title="Molecular VQE", page_icon="🌌", layout="wide")
@@ -89,37 +91,38 @@ st.sidebar.info(
 )
 
 # --- 3. Parsing and Dynamic Rendering ---
-st.header(f"Geometry: {molecule_choice.upper()}")
+st.header(f"Simulation Dashboard: {molecule_choice.upper()}")
+
+# Create a 50/50 split layout
+col_render, col_logs = st.columns(2)
 
 if molecule_choice == "custom":
     selected_atoms = parse_xyz_string(custom_xyz)
     xyz_data = generate_xyz_string(selected_atoms, "custom") 
-    st.caption(f"✅ Successfully parsed {len(selected_atoms)} atoms from custom input.")
+    st.sidebar.caption(f"✅ Parsed {len(selected_atoms)} custom atoms.")
 else:
     selected_atoms = MOLECULE_LIBRARY[molecule_choice]
     xyz_data = generate_xyz_string(selected_atoms, molecule_choice)
 
-# 🐛 DEBUG EXPANDER: See exactly what the parser is handing to py3Dmol
-with st.expander("🔍 View Raw Parsed Data (Debug)"):
-    st.code(xyz_data, language="text")
+with col_render:
+    st.subheader("Molecular Geometry")
+    if len(selected_atoms) > 0:
+        view = py3Dmol.view(width=400, height=400) # Shrunk width to fit column
+        view.setBackgroundColor('#0E1117') 
+        view.addModel(xyz_data, "xyz")
+        view.setStyle({'stick': {'radius': 0.15}, 'sphere': {'radius': 0.4}})
+        view.zoomTo()
+        
+        html_code = view._make_html()
+        st.components.v1.html(html_code, height=400, width=400)
+    else:
+        st.error("⚠️ No valid coordinates found.")
 
-# Render the 3D Model ONLY if atoms were successfully parsed
-if len(selected_atoms) > 0:
-    view = py3Dmol.view(width=800, height=400)
-
-    # NEW: Match the Streamlit dark background exactly
-
-    view.setBackgroundColor('#0E1117')
-    view.addModel(xyz_data, "xyz")
-    view.setStyle({'stick': {'radius': 0.15}, 'sphere': {'radius': 0.4}})
-    view.zoomTo()
-    
-    # We use Streamlit's native HTML renderer here to bypass stmol caching quirks
-    html_code = view._make_html()
-    st.components.v1.html(html_code, height=400, width=800)
-else:
-    st.error("⚠️ No valid coordinates found. The parser returned 0 atoms. Please check the XYZ formatting.")
-
+with col_logs:
+    st.subheader("Execution Logs")
+    # Create an empty placeholder where our terminal output will eventually go
+    terminal_output = st.empty()
+    terminal_output.code("System Idle. Waiting for execution...", language="bash")
 # --- 4. Execution Trigger ---
 if st.button("Initialize Quantum Solver", type="primary"):
     
@@ -130,28 +133,41 @@ if st.button("Initialize Quantum Solver", type="primary"):
         # 1. Update the spinner text
         with st.spinner("Executing VQE on Local Simulator..."):
             try:
-                # 1. Build the Problem
-                factory = MoleculeFactory(atoms=selected_atoms)
-                problem = factory.build_problem(
-                    active_electrons=active_electrons, 
-                    active_orbitals=active_orbitals
-                )
-
-                # 2. Run Classical Baseline
-                start_time_c = time.time()
-                c_energy = calculate_classical_energy(problem)
-                c_time = time.time() - start_time_c
-
-                # 3. Run Quantum VQE
-                start_time_q = time.time()
-                q_energy = run_quantum_vqe(
-                    problem=problem, 
-                    backend_name="local", # 2. Hardcoded securely to 'local'
-                    use_session=False 
-                )
-                q_time = time.time() - start_time_q
+                # 1. Create a fake text file in memory to catch the terminal prints
+                log_stream = io.StringIO()
                 
-                # ... (The rest of your display logic remains exactly the same)
+                # 2. Force all print() statements to go into log_stream instead of the terminal
+                with redirect_stdout(log_stream):
+                
+                    # Build the Problem
+                    factory = MoleculeFactory(atoms=selected_atoms)
+                    problem = factory.build_problem(
+                        active_electrons=active_electrons, 
+                        active_orbitals=active_orbitals
+                    )
+
+                    # Run Classical Baseline
+                    start_time_c = time.time()
+                    c_energy = calculate_classical_energy(problem)
+                    c_time = time.time() - start_time_c
+
+                    # Run Quantum VQE
+                    start_time_q = time.time()
+                    q_energy = run_quantum_vqe(
+                        problem=problem, 
+                        backend_name="local", 
+                        use_session=False 
+                    )
+                    q_time = time.time() - start_time_q
+
+                # 3. Execution is done. Grab the captured text and push it to the UI!
+                captured_logs = log_stream.getvalue()
+                
+                # If your backend doesn't print much, add a default success message
+                if not captured_logs.strip():
+                    captured_logs = "Process exited successfully with code 0.\n(No standard output detected)"
+                    
+                terminal_output.code(captured_logs, language="bash")
 
                 # 4. Calculate Error
                 error = abs(c_energy - q_energy)

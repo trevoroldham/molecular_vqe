@@ -1,0 +1,8 @@
+streamlit
+qiskit
+qiskit-algorithms
+qiskit-nature
+pyscf
+stmol
+py3Dmol
+ipython_genutils
