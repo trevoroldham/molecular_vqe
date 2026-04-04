@@ -1,8 +1,8 @@
 import argparse
 import time
-from molecule_builder import Atom, MoleculeFactory
-from quantum_solver import run_quantum_vqe
-from classical_baseline import calculate_classical_energy
+from molecular_vqe.molecule_builder import Atom, MoleculeFactory
+from molecular_vqe.quantum_solver import run_quantum_vqe
+from molecular_vqe.classical_baseline import calculate_classical_energy
 import warnings
 from scipy.sparse import SparseEfficiencyWarning
 

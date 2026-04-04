@@ -51,3 +51,28 @@ class MoleculeFactory:
             problem = transformer.transform(problem)
 
         return problem
+    
+def generate_xyz_string(atoms, name="molecule"):
+    """Translates a list of Atom objects into a standard XYZ string."""
+    xyz = f"{len(atoms)}\n{name}\n"
+    for atom in atoms:
+        xyz += f"{atom.symbol} {atom.x} {atom.y} {atom.z}\n"
+    return xyz
+
+def parse_xyz_string(xyz_str):
+    """Parses a raw XYZ text block into a list of Atom objects."""
+    atoms = []
+    # splitlines() safely handles invisible Windows \r\n carriage returns
+    for line in xyz_str.strip().splitlines():
+        parts = line.split()
+        # Require at least 4 parts (Symbol, X, Y, Z)
+        if len(parts) >= 4:
+            try:
+                # Force standard chemical capitalization (e.g., c -> C)
+                symbol = parts[0].capitalize()
+                x, y, z = float(parts[1]), float(parts[2]), float(parts[3])
+                atoms.append(Atom(symbol, x, y, z))
+            except ValueError:
+                # Safely ignore header strings or blank lines
+                continue 
+    return atoms
