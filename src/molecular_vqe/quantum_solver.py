@@ -1,6 +1,7 @@
 import qiskit.primitives
 from qiskit.primitives import BaseEstimatorV1, StatevectorEstimator
 qiskit.primitives.BaseEstimator = BaseEstimatorV1
+from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 
 from qiskit.quantum_info import SparsePauliOp
 from qiskit.circuit.library import EfficientSU2
@@ -58,19 +59,41 @@ def run_quantum_vqe(problem, backend_name="local", use_session=False):
         print("Transpiling and executing on QPU...")
         if use_session:
             print("Session ACTIVE: Reserving QPU for continuous SPSA optimization.")
-            # The Session keeps the QPU locked for your algorithm's back-and-forth loop
+            
+            # 1. Transpile the ansatz to match the backend ISA
+            pm = generate_preset_pass_manager(target=backend.target, optimization_level=3)
+            isa_ansatz = pm.run(ansatz)
+            
+            # 2. Open the session using the backend
             with Session(backend=backend) as session:
-                estimator = IBMEstimator(session=session)
+                # In V2, we use 'mode=' instead of 'session=' or 'backend='
+                estimator = IBMEstimator(mode=session)
                 
-                # Turn on Resilience Level 1 (Readout error mitigation)
+                # V2 Options are structured differently; resilience is often set via options.update
                 estimator.options.resilience_level = 1 
                 
-                vqe = VQE(estimator, ansatz, optimizer)
+                # 3. Use the ISA-compliant ansatz
+                vqe = VQE(estimator, isa_ansatz, optimizer)
+                
+                # 4. Use the abstract Hamiltonian (VQE will map it internally)
                 result = vqe.compute_minimum_eigenvalue(qubit_hamiltonian)
         else:
-            # Executes via individual jobs (Warning: highly inefficient for VQE queues)
-            estimator = IBMEstimator(backend=backend)
-            vqe = VQE(estimator, ansatz, optimizer)
+            # Executes via individual jobs (Warning: highly inefficient for VQE queues
+
+            # 1. Create a pass manager tailored to the specific IBM chip
+            pm = generate_preset_pass_manager(target=backend.target, optimization_level=3)
+
+            # 2. Transpile ONLY your abstract ansatz into an ISA-compliant ansatz
+            isa_ansatz = pm.run(ansatz)
+
+            # REMOVE the manual isa_hamiltonian mapping line completely.
+
+            # 3. Initialize the Estimator and VQE
+            estimator = IBMEstimator(mode=backend)
+            vqe = VQE(estimator, isa_ansatz, optimizer)
+
+            # 4. Pass the ORIGINAL abstract qubit_hamiltonian. 
+            # VQE will automatically apply isa_ansatz.layout to it internally.
             result = vqe.compute_minimum_eigenvalue(qubit_hamiltonian)
 
     # 6. Calculate Final Energy
