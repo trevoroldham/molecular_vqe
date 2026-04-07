@@ -11,7 +11,7 @@ from qiskit_algorithms.optimizers import SPSA
 from qiskit_algorithms import VQE
 
 # Import IBM Runtime modules
-from qiskit_ibm_runtime import QiskitRuntimeService, EstimatorV2 as IBMEstimator, Session
+from qiskit_ibm_runtime import QiskitRuntimeService, EstimatorV2 as IBMEstimator, Session, EstimatorOptions
 
 def run_quantum_vqe(problem, backend_name="local", use_session=False):
     """
@@ -65,17 +65,12 @@ def run_quantum_vqe(problem, backend_name="local", use_session=False):
             isa_ansatz = pm.run(ansatz)
             
             # 2. Open the session using the backend
+            options = EstimatorOptions()
+            options.resilience_level = 1  # TREX measurement error mitigation
+
             with Session(backend=backend) as session:
-                # In V2, we use 'mode=' instead of 'session=' or 'backend='
-                estimator = IBMEstimator(mode=session)
-                
-                # V2 Options are structured differently; resilience is often set via options.update
-                estimator.options.resilience_level = 1 
-                
-                # 3. Use the ISA-compliant ansatz
+                estimator = IBMEstimator(mode=session, options=options)  # pass at construction
                 vqe = VQE(estimator, isa_ansatz, optimizer)
-                
-                # 4. Use the abstract Hamiltonian (VQE will map it internally)
                 result = vqe.compute_minimum_eigenvalue(qubit_hamiltonian)
         else:
             # Executes via individual jobs (Warning: highly inefficient for VQE queues
